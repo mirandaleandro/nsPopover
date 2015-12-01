@@ -15,7 +15,7 @@
       trigger: 'click',
       angularEvent: '',
       container: 'body',
-      placement: 'bottom|left',
+      placement: 'auto|auto',
       timeout: 1.5,
       hideOnInsideClick: false,
       hideOnOutsideClick: true,
@@ -169,7 +169,7 @@
           $popovers.push($popover);
 
           var match = options.placement
-            .match(/^(top|bottom|left|right)$|((top|bottom)\|(center|left|right)+)|((left|right)\|(center|top|bottom)+)/);
+              .match(/^(auto|top|bottom|left|right)$|((auto|top|bottom)\|(auto|center|left|right)+)|((left|right)\|(center|top|bottom)+)/);
 
           if (!match) {
             throw new Error('"' + options.placement + '" is not a valid placement or has a invalid combination of placements.');
@@ -180,10 +180,10 @@
 
           $q.when(loadTemplate(options.template, options.plain)).then(function(template) {
             template = angular.isString(template) ?
-              template :
-              template.data && angular.isString(template.data) ?
-                template.data :
-                '';
+                template :
+                template.data && angular.isString(template.data) ?
+                    template.data :
+                    '';
 
             $popover.html(template);
 
@@ -194,8 +194,8 @@
             // Add classes that identifies the pacement and alignment of the popver
             // which allows the customization of the popover based on its position.
             $popover
-              .addClass('ns-popover-' + placement_ + '-placement')
-              .addClass('ns-popover-' + align_ + '-align');
+                .addClass('ns-popover-' + placement_ + '-placement')
+                .addClass('ns-popover-' + align_ + '-align');
 
             $timeout(function() {
               $compile($popover)(scope);
@@ -216,8 +216,8 @@
             });
 
             $popover
-              .css('position', 'absolute')
-              .css('display', 'none');
+                .css('position', 'absolute')
+                .css('display', 'none');
 
             // When the tooltip style is used we need to position the triangle in the
             // center of the triggering element. We try first to find the elements that
@@ -256,20 +256,20 @@
           }
 
           elm
-            .on('mouseout', function() {
-              hider_.hide($popover, options.timeout);
-            })
-            .on('mouseover', function() {
-              hider_.cancel();
-            });
+              .on('mouseout', function() {
+                hider_.hide($popover, options.timeout);
+              })
+              .on('mouseover', function() {
+                hider_.cancel();
+              });
 
           $popover
-            .on('mouseout', function(e) {
-              hider_.hide($popover, options.timeout);
-            })
-            .on('mouseover', function() {
-              hider_.cancel();
-            });
+              .on('mouseout', function(e) {
+                hider_.hide($popover, options.timeout);
+              })
+              .on('mouseover', function() {
+                hider_.cancel();
+              });
 
           /**
            * Move the popover to the |placement| position of the object located on the |rect|.
@@ -284,11 +284,21 @@
             var popoverRect = getBoundingClientRect(popover[0]);
             var top, left;
 
+            if(placement === 'auto' && align === 'auto'){
+              if(isLeftBound())
+                setLeft();
+              else if(isCenterBound())
+                setCenter();
+              else {
+                setRight();
+              }
+            }
+
             var positionX = function() {
               if (align === 'center') {
                 return Math.round(rect.left + rect.width/2 - popoverRect.width/2);
               } else if(align === 'right') {
-                return rect.right - popoverRect.width;
+                return rect.right - popoverRect.width + rect.width;
               }
               return rect.left;
             };
@@ -302,23 +312,62 @@
               return rect.top;
             };
 
-            if (placement === 'top') {
-              top = rect.top - popoverRect.height;
-              left = positionX();
-            } else if (placement === 'right') {
-              top = positionY();
-              left = rect.right;
-            } else if (placement === 'bottom') {
+            function isBottomInBound(){
+              return rect.bottom + popoverRect.height < window.innerHeight;
+            }
+
+            function setBottom(){
               top = rect.bottom;
               left = positionX();
+              placement = "bottom";
+            }
+
+            function setTop(){
+              top = rect.top - popoverRect.height;
+              left = positionX();
+              placement = "top";
+            }
+
+            function isLeftBound(){
+              return rect.left + popoverRect.width < window.innerWidth;
+            }
+
+            function setLeft(){
+              align = 'left';
+            }
+
+            function isCenterBound(){
+              return rect.left + rect.width/2 + popoverRect.width/2 < window.innerWidth;
+            }
+
+            function setCenter(){
+              align = 'center';
+            }
+
+            function setRight(){
+              align = 'right';
+            }
+
+            if (placement === 'top') {
+              setTop();
+            } else if (placement === 'right') {
+              top = positionY();
+              left = rect.right + popoverRect.width;
+            } else if (placement === 'bottom') {
+              setBottom();
             } else if (placement === 'left') {
               top = positionY();
               left = rect.left - popoverRect.width;
+            }else if(placement === 'auto'){
+              if(isBottomInBound())
+                setBottom();
+              else
+                setTop();
             }
 
             popover
-              .css('top', top.toString() + 'px')
-              .css('left', left.toString() + 'px');
+                .css('top', top.toString() + 'px')
+                .css('left', left.toString() + 'px');
 
             if (triangle) {
               if (placement === 'top' || placement === 'bottom') {
@@ -329,6 +378,24 @@
                 triangle.css('top', top.toString()  + 'px');
               }
             }
+
+            // Add classes that identifies the placement and alignment of the popver
+            // which allows the customization of the popover based on its position.
+            var classesToRemove = [
+              "ns-popover-left-placement",
+              "ns-popover-top-placement" ,
+              "ns-popover-right-placement",
+              "ns-popover-bottom-placement",
+              "ns-popover-left-align",
+              "ns-popover-top-align",
+              "ns-popover-right-align",
+              "ns-popover-bottom-align"
+            ];
+
+            $popover.removeClass( classesToRemove.join(" ") );
+            $popover
+                .addClass('ns-popover-' + placement + '-placement')
+                .addClass('ns-popover-' + align + '-align');
           }
 
           /**
